@@ -6,14 +6,14 @@ import (
 )
 
 func main() {
-	fmt.Println("Starting server...")
+	fmt.Println("Starting one time listener...")
 
 	// start a TLS server on port 8080
 	go Listen()
 
 	time.Sleep(time.Second * 2)
 
-	// connect to server
-	fmt.Println("Starting connection...")
+	// connect to listener
+	fmt.Println("Starting client...")
 	Connect()
 }

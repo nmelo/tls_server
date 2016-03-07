@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
 )
 
 func Connect() {
@@ -83,19 +84,21 @@ j2n/AjoppGlF/Ct96gWDquIANXjAV9tSosG+eK1XVar6ewZiX/try/J8RvCw
 
 	fmt.Println("Connecting to localhost:8080...")
 
-	// First, create the set of root certificates. For this example we only
-	// have one. It's also possible to omit this in order to use the
-	// default root set of the current operating system.
+	// Create the set of root certificates this connection will use to verify server certs.
 	roots := x509.NewCertPool()
 	ok_root := roots.AppendCertsFromPEM([]byte(rootPEM))
 	if !ok_root {
 		panic("failed to parse root certificate")
 	}
+
+	// sub cert also required to complete the chain
 	ok_sub := roots.AppendCertsFromPEM([]byte(subPEM))
 	if !ok_sub {
 		panic("failed to parse sub certificate")
 	}
 
+	// we're using /etc/hosts to redirect codemodlabs.com to the loopback interface
+	// in order to reuse certs signed to codemodlabs.com
 	conn, err := tls.Dial("tcp", "codemodlabs.com:8080", &tls.Config{
 		RootCAs: roots,
 	})
@@ -108,22 +111,33 @@ j2n/AjoppGlF/Ct96gWDquIANXjAV9tSosG+eK1XVar6ewZiX/try/J8RvCw
 		panic("host is not valid for certificates: " + err.Error())
 	}
 
-	net_addr := conn.RemoteAddr()
-	if net_addr != nil {
-		fmt.Println(net_addr.String())
+	fmt.Println("Hostname verified and certs valid")
+
+	// read from connection into a buffer
+	sec_bytes := make([]byte, 6) // Hacky hardcoded buffer size, fix later
+	var bytes_read int
+	var sec_header Security_Header
+
+	for {
+		bytes_read, err = conn.Read(sec_bytes)
+		if err == io.EOF {
+			break
+		}
 	}
 
-	local_addr := conn.LocalAddr()
-	if local_addr != nil {
-		fmt.Println(local_addr.String())
+	// deserialize gob with Security header from buffer
+	err = sec_header.GobDecode(sec_bytes)
+	if err != nil {
+		if err != io.EOF {
+			fmt.Println("read error:", err)
+		}
 	}
 
-	ocsp_resp := conn.OCSPResponse()
-	if ocsp_resp != nil {
-		fmt.Print(ocsp_resp)
-	}
+	//print the number and the amount of bytes read
+	fmt.Println("Sec header field Number read: ", sec_header.Number)
+	fmt.Println("sec header bytes read: ", bytes_read)
 
-	fmt.Println("Connected and certs valid")
 	conn.Close()
 
+	fmt.Println("Closing connection...shutting down client")
 }

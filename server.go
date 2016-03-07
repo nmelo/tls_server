@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"crypto/tls"
+	"bytes"
+	"encoding/gob"
 )
 
 
@@ -22,6 +24,22 @@ func Listen() {
 		}
 		go HandleConnection(conn)
 	}
+}
+
+func (d *Security_Header) GobEncode() ([]byte, error) {
+	w := new(bytes.Buffer)
+	encoder := gob.NewEncoder(w)
+	err := encoder.Encode(d.Number)
+	if err!=nil {
+		return nil, err
+	}
+	return w.Bytes(), nil
+}
+
+func (d *Security_Header) GobDecode(buf []byte) error {
+	r := bytes.NewBuffer(buf)
+	decoder := gob.NewDecoder(r)
+	return decoder.Decode(&d.Number)
 }
 
 type Security_Header struct {
@@ -110,5 +128,18 @@ sQxez1ameuF1amZKDPcwxKrW1flWwCbWMy6w86jn0dpAAoTTOgLvVTmnItsigjyS
 	})
 	tls_conn.Handshake()
 
-	fmt.Println("Connection State: " + tls_conn.ConnectionState().NegotiatedProtocol)
+	// Serializing fake security header into gob
+	sec_header := Security_Header{Number: 777}
+	sec_bytes, err := sec_header.GobEncode()
+	if err != nil {
+		panic("failed encode sec header: " + err.Error())
+	}
+
+	fmt.Println("Sending sec header bytes: ", len(sec_bytes))
+	tls_conn.Write(sec_bytes)
+
+	tls_conn.Close()
+	conn.Close()
+
+	fmt.Println("Closing connection...shutting down server")
 }
