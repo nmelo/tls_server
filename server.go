@@ -5,7 +5,7 @@ import (
 	"net"
 )
 
-func listen() {
+func Listen() {
 
 	fmt.Println("Starting to listen on port 443...")
 

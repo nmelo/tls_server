@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func connect() {
+func Connect() {
 
 	const rootPEM = `
 -----BEGIN CERTIFICATE-----
