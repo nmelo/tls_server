@@ -1,4 +1,4 @@
-package signals
+package main
 
 import (
 	"crypto/tls"
@@ -81,6 +81,8 @@ N3/9QwrofAlzZtoKvGqY0XCSY2wRyJEg0qZRd7/+Jn3H1odS34JrtlV82ZIBZmzA
 j2n/AjoppGlF/Ct96gWDquIANXjAV9tSosG+eK1XVar6ewZiX/try/J8RvCw
 -----END CERTIFICATE-----`
 
+	fmt.Println("Connecting to localhost:8080...")
+
 	// First, create the set of root certificates. For this example we only
 	// have one. It's also possible to omit this in order to use the
 	// default root set of the current operating system.
@@ -94,7 +96,7 @@ j2n/AjoppGlF/Ct96gWDquIANXjAV9tSosG+eK1XVar6ewZiX/try/J8RvCw
 		panic("failed to parse sub certificate")
 	}
 
-	conn, err := tls.Dial("tcp", "codemodlabs.com:443", &tls.Config{
+	conn, err := tls.Dial("tcp", "codemodlabs.com:8080", &tls.Config{
 		RootCAs: roots,
 	})
 	if err != nil {
