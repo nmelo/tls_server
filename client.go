@@ -102,9 +102,12 @@ j2n/AjoppGlF/Ct96gWDquIANXjAV9tSosG+eK1XVar6ewZiX/try/J8RvCw
 	conn, err := tls.Dial("tcp", "codemodlabs.com:8080", &tls.Config{
 		RootCAs: roots,
 	})
+
 	if err != nil {
 		panic("failed to connect: " + err.Error())
+		return
 	}
+	defer conn.Close()
 
 	err = conn.VerifyHostname("codemodlabs.com")
 	if err != nil {
@@ -114,7 +117,7 @@ j2n/AjoppGlF/Ct96gWDquIANXjAV9tSosG+eK1XVar6ewZiX/try/J8RvCw
 	fmt.Println("Hostname verified and certs valid")
 
 	// read from connection into a buffer
-	sec_bytes := make([]byte, 6) // Hacky hardcoded buffer size, fix later
+	sec_bytes := make([]byte, 6) // Hacky hardcoded buffer size
 	var bytes_read int
 	var sec_header Security_Header
 
@@ -136,8 +139,6 @@ j2n/AjoppGlF/Ct96gWDquIANXjAV9tSosG+eK1XVar6ewZiX/try/J8RvCw
 	//print the number and the amount of bytes read
 	fmt.Println("Sec header field Number read: ", sec_header.Number)
 	fmt.Println("sec header bytes read: ", bytes_read)
-
-	conn.Close()
 
 	fmt.Println("Closing connection...shutting down client")
 }

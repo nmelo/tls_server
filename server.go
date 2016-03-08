@@ -8,24 +8,6 @@ import (
 	"encoding/gob"
 )
 
-
-func Listen() {
-
-	fmt.Println("Listening localhost:8080...")
-
-	ln, err := net.Listen("tcp", ":8080")
-	if err != nil {
-		panic("error starting server: " + err.Error())
-	}
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			panic("error starting server: " + err.Error())
-		}
-		go HandleConnection(conn)
-	}
-}
-
 func (d *Security_Header) GobEncode() ([]byte, error) {
 	w := new(bytes.Buffer)
 	encoder := gob.NewEncoder(w)
@@ -46,7 +28,7 @@ type Security_Header struct {
 	Number  uint16
 }
 
-func HandleConnection(conn net.Conn) {
+func Listen() {
 
 	const ServerPEM = `
 -----BEGIN CERTIFICATE-----
@@ -112,21 +94,46 @@ sQxez1ameuF1amZKDPcwxKrW1flWwCbWMy6w86jn0dpAAoTTOgLvVTmnItsigjyS
 1IY94FgdvoIS9De484oIeneGGWPreJ3w/jhhNa+iMImdLwllukW9sQ==
 -----END RSA PRIVATE KEY-----`
 
-
-	fmt.Println("Handling connection from: " + conn.RemoteAddr().String())
-	fmt.Println("Handling connection as: " + conn.LocalAddr().String())
+	fmt.Println("Listening localhost:8080...")
 
 	cert, err := tls.X509KeyPair([]byte(ServerPEM), []byte(ServerKey))
 	if err != nil {
 		panic("failed to parse server certificate: " + err.Error())
 	}
 
-	certs := []tls.Certificate{cert}
+	var config = &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		CipherSuites: []uint16{tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+		MinVersion: tls.VersionTLS12,
+		//ClientAuth : tls.RequireAndVerifyClientCert,  // enable to require server side validation of client certs
+	}
 
-	tls_conn := tls.Server(conn, &tls.Config{
-		Certificates: certs,
-	})
-	tls_conn.Handshake()
+	ln, err := tls.Listen("tcp", ":8080", config)
+	if err != nil {
+		panic("error starting server: " + err.Error())
+	}
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			panic("error starting server: " + err.Error())
+		}
+		go HandleConnection(conn)
+	}
+}
+
+func HandleConnection(conn net.Conn) {
+
+	defer conn.Close()
+
+	fmt.Println("Handling connection from: " + conn.RemoteAddr().String())
+	fmt.Println("Handling connection as: " + conn.LocalAddr().String())
 
 	// Serializing fake security header into gob
 	sec_header := Security_Header{Number: 777}
@@ -136,10 +143,7 @@ sQxez1ameuF1amZKDPcwxKrW1flWwCbWMy6w86jn0dpAAoTTOgLvVTmnItsigjyS
 	}
 
 	fmt.Println("Sending sec header bytes: ", len(sec_bytes))
-	tls_conn.Write(sec_bytes)
-
-	tls_conn.Close()
-	conn.Close()
+	conn.Write(sec_bytes)
 
 	fmt.Println("Closing connection...shutting down server")
 }
